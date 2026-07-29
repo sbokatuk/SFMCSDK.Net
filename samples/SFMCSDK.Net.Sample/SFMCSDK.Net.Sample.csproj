@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      The net10 band. MAUI 8 and 9 cannot build against the AndroidX generation the SFMC Android
+      binding's dependencies resolve to - a known .NET Android SDK defect generating Java callable
+      wrappers, recorded in the sibling SFMCSDK.Net.Android sample - while MAUI 10 handles it.
+      That is why the package's floor is net8 while this sample's is net10: a constraint on the
+      MAUI version this sample builds with, not on what consumers ship.
+    -->
+    <TargetFrameworks>net10.0-android36.0;net10.0-ios26.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SFMCSDK.Net.Sample</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <CheckEolWorkloads>false</CheckEolWorkloads>
+    <!-- See the note in src/Sfmc.Facade.props: a property of the AndroidX graph, not of this. -->
+    <NoWarn>$(NoWarn);NU1608</NoWarn>
+
+    <ApplicationTitle>SFMCSDK.Net Sample</ApplicationTitle>
+    <ApplicationId>com.sbokatuk.sfmcnet.sample</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- The package's own floors - iOS 12.2 (Swift runtime), Android API 26 (the sfmcsdk .aar). -->
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">12.2</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App Icon -->
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+
+    <!-- Splash Screen -->
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+
+    <!-- Images -->
+    <MauiImage Include="Resources\Images\*" />
+    <MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
+
+    <!-- Custom Fonts -->
+    <MauiFont Include="Resources\Fonts\*" />
+
+    <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.2" />
+  </ItemGroup>
+
+  <!--
+    Consumes the packed SFMCSDK.Net from ./artifacts rather than the project, exactly as a real
+    app would - so this is what checks the published API is still usable the way the README
+    documents, with the platform bindings arriving transitively through the package's own
+    dependency groups. Run ./build/BuildNugets.sh first; pass -p:SfmcPackageVersion=... to point
+    it at a specific build. See NuGet.config for the local feed.
+  -->
+  <PropertyGroup>
+    <SfmcPackageVersion Condition=" '$(SfmcPackageVersion)' == '' ">$(VersionPrefix)</SfmcPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SFMCSDK.Net" Version="$(SfmcPackageVersion)" />
+  </ItemGroup>
+
+</Project>

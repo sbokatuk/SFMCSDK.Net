@@ -1,0 +1,20 @@
+# What build/check-upstream.sh watches, and the single source of truth for it.
+#
+# The script (shared verbatim with the two binding repositories) knows how to query each
+# ecosystem but nothing about which components matter here. This repository binds nothing, so
+# what it watches is the two NATIVE SDK lines its pinned binding packages wrap: a new Salesforce
+# release is the signal that the binding repositories will move and this façade will need
+# re-pinning behind them. The binding packages themselves are pinned by hand in
+# Directory.Build.props and have no automated watcher - they are this author's own releases.
+#
+# Columns are single-tab-separated.
+#   group    reporting group - one note file per group, titled with this text
+#   label    how the component is named inside the note
+#   kind     cocoapods | maven | github-release | github-tag
+#   pin      the MSBuild property in Directory.Build.props holding the pinned version
+#   locator  kind-specific: pod name, groupId:artifactId[:packaging][@repo], or owner/repo
+#   confirm  download URL template with {version}, or "-" to derive it from the locator
+#
+# group	label	kind	pin	locator	confirm
+SFMC SDK iOS	sfmc-sdk-ios	github-tag	SfmcNativeVersion	salesforce-marketingcloud/sfmc-sdk-ios	https://github.com/salesforce-marketingcloud/sfmc-sdk-ios/archive/refs/tags/v{version}.zip
+SFMC SDK Android	sfmcsdk	maven	SfmcAndroidNativeVersion	com.salesforce.marketingcloud:sfmcsdk:aar@https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/repository	-
