@@ -103,10 +103,28 @@ unconditionally — and every member that would reach the native SDK throws
 no-oping: an identity edit that silently vanished on a Windows head would read as data loss in
 Marketing Cloud.
 
+Two members are exempt and never throw, on any target framework, because they are what shared code
+*branches on*: `IsSupported` (is there a native SDK under this build?) and `IsInitialized` (did an
+`InitializeAsync` on this client succeed?). For a head that has no SDK and wants the calls to be
+harmless rather than fatal, the package also ships `NullSfmcSdkClient` — a no-op implementation that
+still validates its arguments, so it hides platforms without hiding your bugs:
+
+```csharp
+builder.Services.AddSingleton<ISfmcSdkClient>(
+    new SfmcSdkClient() is { IsSupported: true } client ? client : new NullSfmcSdkClient());
+```
+
+> **Using MobilePush too?** Then you do not need this client at all:
+> [`MarketingCloudSDK.Net`](https://github.com/sbokatuk/MarketingCloudSDK.Net) composes one
+> internally and re-exports `Identity` and `TrackCustomEvent`, and its initialization brings this
+> core up underneath with the MobilePush module attached. Never call **this** package's
+> `InitializeAsync` in an app that initializes MobilePush — that configures the core a second time
+> with an empty module set, which upstream forbids.
+
 ## Packages and versions
 
-One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.1.1` is SFMCSDK
-**4.0.1**, revision **1**, and the Android side of the same release is sfmcsdk **3.1.1**.
+One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.1.2` is SFMCSDK
+**4.0.1**, revision **2**, and the Android side of the same release is sfmcsdk **3.1.1**.
 
 > **Why one version names one SDK.** Salesforce releases the iOS and Android SDKs on separate
 > cadences and their version numbers have never matched. A façade over both has to pick one line
@@ -116,7 +134,7 @@ One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.
 
 | SFMCSDK.Net | SFMCSDK (iOS, native) | sfmcsdk (Android, native) | SFMCSDK.Net.iOS | SFMCSDK.Net.Android |
 | --- | --- | --- | --- | --- |
-| 4.0.1.1 | 4.0.1 | 3.1.1 | 4.0.1.2 | 3.1.1.1 |
+| 4.0.1.2 | 4.0.1 | 3.1.1 | 4.0.1.2 | 3.1.1.1 |
 
 The platform packages are pinned **exactly** (`[4.0.1.2]` / `[3.1.1.1]`), not floored: the façade
 calls each binding's hand-written convenience layer — the `Action` overloads of
@@ -128,7 +146,7 @@ floating a consumer onto it.
 ## Installing
 
 ```xml
-<PackageReference Include="SFMCSDK.Net" Version="4.0.1.1" />
+<PackageReference Include="SFMCSDK.Net" Version="4.0.1.2" />
 ```
 
 Nine target frameworks: `net8.0`, `net9.0`, `net10.0`, each with its `-android` and `-ios` head —
@@ -141,10 +159,11 @@ The platform heads pull `SFMCSDK.Net.Android 3.1.1.1` / `SFMCSDK.Net.iOS 4.0.1.2
 apps reference only this package unless they want the raw namespaces pinned explicitly (they may
 — the same versions arrive either way).
 
-For a MAUI app, target net9 or net10: MAUI 8 and 9 cannot build against the AndroidX generation
-the SFMC Android binding's dependencies resolve to (a Java-callable-wrapper defect the binding
-repository's README records), while MAUI 10 handles it. The net8 assets are for plain .NET
-Android / .NET iOS apps, which is also what the binding packages' own net8 support is for.
+For a MAUI app with an Android head, target net10: MAUI 8 and 9 cannot build against the AndroidX
+generation the SFMC Android binding's dependencies resolve to (a Java-callable-wrapper defect the
+binding repository's README records), while MAUI 10 handles it. An iOS-only MAUI app is fine on
+net8 or net9. The net8 and net9 assets are otherwise for plain .NET Android / .NET iOS apps, which
+is also what the binding packages' own net8 support is for.
 
 ## Usage notes
 
@@ -163,7 +182,14 @@ Android / .NET iOS apps, which is also what the binding packages' own net8 suppo
   synchronous property reports the static initialization state
   (`NONE`/`INITIALIZING`/`READY`/`ERROR`) instead.
 - **Push is not here.** MobilePush lives in the MarketingCloudSDK binding repositories, which
-  depend on these same core bindings — configure it through the raw config builders.
+  depend on these same core bindings. For a cross-platform MobilePush surface use
+  [`MarketingCloudSDK.Net`](https://github.com/sbokatuk/MarketingCloudSDK.Net) — it composes this
+  façade rather than sitting beside it; for module-level control, the raw config builders.
+- **`IsSupported` and `IsInitialized` never throw.** They are the two members shared code branches
+  on, so they answer on every target framework — including the neutral ones, where everything else
+  throws. `IsInitialized` is a status signal, not a precondition: identity work is legal before
+  initialization because the SDK queues it. It is also not the one-shot guard — after a failed
+  initialization it stays false while the guard stays claimed.
 
 ## How this repository works
 
@@ -200,7 +226,7 @@ the sibling repositories) and the locally packed façade both resolve without pu
 
 ```sh
 cp ../SFMCSDK.Net.Android/artifacts/*.nupkg ../SFMCSDK.Net.iOS/artifacts/*.nupkg artifacts/  # or let nuget.org serve them
-./build/BuildNugets.sh                # packs 4.0.1.1 into ./artifacts
+./build/BuildNugets.sh                # packs 4.0.1.2 into ./artifacts
 dotnet test tests/SFMCSDK.Net.UnitTests -p:SfmcNeutralOnly=true
 dotnet test tests/SFMCSDK.Net.PackageTests
 ```
@@ -212,8 +238,8 @@ Three suites, cheapest first — each catches what the previous one cannot see:
 ```sh
 dotnet test tests/SFMCSDK.Net.UnitTests -p:SfmcNeutralOnly=true   # validation, guard, neutral contract
 dotnet test tests/SFMCSDK.Net.PackageTests                        # nine TFMs, exact pins, licence, symbols
-./.github/scripts/run-simulator-tests.sh 4.0.1.1 net9.0-ios18.0   # the façade over the real SDK
-./.github/scripts/run-emulator-tests.sh 4.0.1.1 net9.0-android35.0
+./.github/scripts/run-simulator-tests.sh 4.0.1.2 net9.0-ios18.0   # the façade over the real SDK
+./.github/scripts/run-emulator-tests.sh 4.0.1.2 net9.0-android35.0
 ```
 
 `-p:SfmcNeutralOnly=true` collapses the referenced façade to its neutral target frameworks, so
@@ -264,6 +290,19 @@ client and per process — see [Usage notes](#usage-notes). Await the first call
 
 **Restore fails with NU1301 naming `artifacts`.** The local package source must exist:
 `mkdir -p artifacts` (a fresh clone has it via the committed `.gitkeep`).
+
+**A stale package in `artifacts/` shadows nuget.org, and `NU1107` blames a version you never
+pinned.** The local feed is searched alongside nuget.org, so a nupkg packed here *before* a
+dependency was re-pinned keeps being resolved under the same version number — and once restored it
+is cached in the NuGet global-packages folder, where it poisons every other repository too. Clearing
+both is the fix:
+
+```bash
+rm -f artifacts/*.nupkg artifacts/*.snupkg && rm -rf ~/.nuget/packages/sfmcsdk.net/<version> && dotnet restore --force
+```
+
+The tell is a `NU1107` naming two versions of the same binding, one of which matches no
+`Directory.Build.props` pin in any repository.
 
 **NU1608 warnings about AndroidX Lifecycle versions.** A property of the AndroidX graph the SFMC
 Android binding pulls in — two of its packages exact-range a sibling that a third floats past.

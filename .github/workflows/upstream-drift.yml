@@ -42,7 +42,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       # Named here rather than in the script so each repository says its own thing without the
       # shared checker growing repository-specific prose.
-      REPIN_HINT: 'Pins live in `Directory.Build.props`: update the platform package version property and bump the binding revision; keep the README pins in step.'
+      REPIN_HINT: 'Pins live in `Directory.Build.props`: `./build/RepinPackages.sh --android <v> --ios <v> [--revision <n>]` updates the platform package version properties and the binding revision, then reports which README pins still need updating.'
     steps:
       - uses: actions/checkout@v4
 

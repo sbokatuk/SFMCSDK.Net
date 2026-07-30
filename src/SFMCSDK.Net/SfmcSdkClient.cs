@@ -27,11 +27,20 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
     /// <summary>0 until <see cref="InitializeAsync"/> claims it; the claim is never returned.</summary>
     private int _initializationClaimed;
 
+    /// <summary>0 until an <see cref="InitializeAsync"/> call has completed successfully.</summary>
+    private int _initialized;
+
     /// <inheritdoc />
     public ISfmcIdentity Identity { get; }
 
     /// <inheritdoc />
     public string DiagnosticState => DiagnosticStateCore();
+
+    /// <inheritdoc />
+    public bool IsSupported => SupportedCore();
+
+    /// <inheritdoc />
+    public bool IsInitialized => Volatile.Read(ref _initialized) == 1;
 
     /// <summary>
     /// Creates the client. Nothing native happens here — construction is valid on every target
@@ -67,7 +76,23 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
                 "Await the first call instead of issuing another.");
         }
 
-        return InitializeCore(options, cancellationToken);
+        // The platform call starts here, synchronously - only the flag-setting is deferred, so a
+        // neutral head still throws PlatformNotSupportedException out of this method rather than
+        // from an awaited task.
+        return MarkInitialized(InitializeCore(options, cancellationToken));
+    }
+
+    /// <summary>
+    /// Awaits the platform initialization and, only on success, publishes
+    /// <see cref="IsInitialized"/>. A failed or timed-out initialization leaves the flag false
+    /// while the one-shot claim stays taken - the two answer different questions ("may I try?"
+    /// versus "is it up?"), and conflating them would let a retry through after a timeout whose
+    /// native initialization is likely still running.
+    /// </summary>
+    private async Task MarkInitialized(Task initialization)
+    {
+        await initialization.ConfigureAwait(false);
+        Volatile.Write(ref _initialized, 1);
     }
 
     /// <inheritdoc />
@@ -108,6 +133,13 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
     // the intended outcome: an assembly whose API silently did nothing would be worse.
 
     private partial Task InitializeCore(SfmcSdkOptions options, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether this build has a native SFMC SDK underneath it - true from the Android and iOS legs,
+    /// false from the neutral one. A plain answer rather than a throw, because it is what code
+    /// guards <em>on</em>; see <see cref="ISfmcSdkClient.IsSupported"/>.
+    /// </summary>
+    private static partial bool SupportedCore();
 
     private partial void SetProfileIdCore(string profileId);
 

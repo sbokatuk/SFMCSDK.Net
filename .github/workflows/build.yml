@@ -427,6 +427,7 @@ jobs:
                  --configuration Release \
                  -p:TargetFrameworks="${{ matrix.tfm }}" \
                  --framework "${{ matrix.tfm }}" \
+                 -p:TargetFrameworks="${{ matrix.tfm }}" \
                  ${{ matrix.args }} \
                  -p:SfmcPackageVersion="${{ inputs.version }}" )
 

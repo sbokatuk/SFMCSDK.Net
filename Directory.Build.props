@@ -25,7 +25,7 @@
       literal values on their own lines rather than composing them from other properties.
     -->
     <SfmcNativeVersion>4.0.1</SfmcNativeVersion>
-    <SfmcBindingRevision>1</SfmcBindingRevision>
+    <SfmcBindingRevision>2</SfmcBindingRevision>
     <VersionPrefix>$(SfmcNativeVersion).$(SfmcBindingRevision)</VersionPrefix>
 
     <!--
