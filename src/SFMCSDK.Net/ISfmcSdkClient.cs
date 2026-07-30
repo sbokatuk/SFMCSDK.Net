@@ -92,4 +92,32 @@ public interface ISfmcSdkClient
     /// </summary>
     /// <exception cref="PlatformNotSupportedException">Neutral target framework.</exception>
     string DiagnosticState { get; }
+
+    /// <summary>
+    /// Whether this build has a native SFMC SDK underneath it: true on net*-android and net*-ios
+    /// application heads, false on the neutral target frameworks (a MAUI app's Windows head, a
+    /// shared class library, a unit-test host).
+    /// </summary>
+    /// <remarks>
+    /// The one member that answers on every target framework instead of throwing — it is what
+    /// shared code guards <em>on</em>, and a guard that throws would need a guard. Use it to skip
+    /// SDK work rather than to discover the platform: a fake injected in tests can report either
+    /// value, which is the point.
+    /// </remarks>
+    bool IsSupported { get; }
+
+    /// <summary>
+    /// Whether an <see cref="InitializeAsync"/> call on this client has completed successfully.
+    /// False before the first call, while one is in flight, and after one that failed or timed out.
+    /// Never throws, on any target framework.
+    /// </summary>
+    /// <remarks>
+    /// For shared code that has to answer "is it up yet?" without holding the initialization task —
+    /// a diagnostics screen, a lazily-initialized view model. It is not the one-shot guard:
+    /// initialization stays claimed after a failure (see
+    /// <see cref="SfmcSdkClient.InitializeAsync"/>), so a false here does not mean another call is
+    /// permitted. Identity work is legal before initialization anyway — the SDK queues it — so this
+    /// is a status signal, not a precondition to check.
+    /// </remarks>
+    bool IsInitialized { get; }
 }

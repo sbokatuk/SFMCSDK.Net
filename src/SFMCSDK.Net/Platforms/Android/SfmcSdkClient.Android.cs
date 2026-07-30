@@ -101,6 +101,9 @@ public sealed partial class SfmcSdkClient
         SFMCSdk.Track(custom);
     }
 
+
+    private static partial bool SupportedCore() => true;
+
     /// <remarks>
     /// The static initialization state - NONE, INITIALIZING, READY or ERROR. Android's richer
     /// per-module detail lives on the instance <c>requestSdk</c> delivers asynchronously, which

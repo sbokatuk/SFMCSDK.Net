@@ -39,4 +39,8 @@ public sealed partial class SfmcSdkClient
         throw NotSupported();
 
     private partial string DiagnosticStateCore() => throw NotSupported();
+
+    // The exception to the throwing rule, and the reason the rule is tolerable: this is the member
+    // shared code branches on before calling any of the others.
+    private static partial bool SupportedCore() => false;
 }

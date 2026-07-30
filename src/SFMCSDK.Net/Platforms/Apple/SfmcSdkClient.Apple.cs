@@ -110,6 +110,9 @@ public sealed partial class SfmcSdkClient
         SFMCSdk.Track(custom);
     }
 
+
+    private static partial bool SupportedCore() => true;
+
     /// <remarks>The SDK's own state JSON - <c>SFMCSdk.state</c>.</remarks>
     private partial string DiagnosticStateCore() => SFMCSdk.State;
 
