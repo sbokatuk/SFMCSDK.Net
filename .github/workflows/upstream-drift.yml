@@ -1,8 +1,8 @@
 name: upstream drift
 
-# The native SDK pins in Directory.Build.props are updated by hand, and nothing else watches the
-# vendors. Without this, a year of upstream releases goes unnoticed - which is not hypothetical:
-# this repository's pins have sat several releases behind before.
+# The platform binding package pins in Directory.Build.props are updated by hand, and nothing else
+# watches nuget.org for new platform package releases. Without this, the umbrella can keep
+# resolving an older binding until somebody notices.
 #
 # What gets watched lives in build/upstream.tsv; how it is checked lives in
 # build/check-upstream.sh, which is runnable locally (`DRIFT_DIR=/tmp/d ./build/check-upstream.sh`)
