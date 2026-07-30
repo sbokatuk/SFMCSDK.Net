@@ -26,5 +26,5 @@
 #   confirm  download URL template with {version}, or "-" to derive it from the locator
 #
 # group	label	kind	pin	locator	confirm
-SFMC SDK Android	SFMCSDK.Net.Android	nuget	SfmcAndroidPackageVersion	SFMCSDK.Net.Android	-
-SFMC SDK iOS	SFMCSDK.Net.iOS	nuget	SfmcIosPackageVersion	SFMCSDK.Net.iOS	-
+SFMC platform package Android	SFMCSDK.Net.Android	nuget	SfmcAndroidPackageVersion	SFMCSDK.Net.Android	-
+SFMC platform package iOS	SFMCSDK.Net.iOS	nuget	SfmcIosPackageVersion	SFMCSDK.Net.iOS	-
