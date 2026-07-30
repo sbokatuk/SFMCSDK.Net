@@ -25,6 +25,10 @@
 #            NuGet package id
 #   confirm  download URL template with {version}, or "-" to derive it from the locator
 #
-# group	label	kind	pin	locator	confirm
-SFMC platform package Android	SFMCSDK.Net.Android	nuget	SfmcAndroidPackageVersion	SFMCSDK.Net.Android	-
-SFMC platform package iOS	SFMCSDK.Net.iOS	nuget	SfmcIosPackageVersion	SFMCSDK.Net.iOS	-
+#   source   owner/repo publishing the component - optional, and only meaningful on nuget
+#            rows, where the drift finding links that repository's release notes for the
+#            version it reports
+#
+# group	label	kind	pin	locator	confirm	source
+SFMC platform package Android	SFMCSDK.Net.Android	nuget	SfmcAndroidPackageVersion	SFMCSDK.Net.Android	-	sbokatuk/SFMCSDK.Net.Android
+SFMC platform package iOS	SFMCSDK.Net.iOS	nuget	SfmcIosPackageVersion	SFMCSDK.Net.iOS	-	sbokatuk/SFMCSDK.Net.iOS
