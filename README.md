@@ -116,9 +116,9 @@ One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.
 
 | SFMCSDK.Net | SFMCSDK (iOS, native) | sfmcsdk (Android, native) | SFMCSDK.Net.iOS | SFMCSDK.Net.Android |
 | --- | --- | --- | --- | --- |
-| 4.0.1.1 | 4.0.1 | 3.1.1 | 4.0.1.1 | 3.1.1.1 |
+| 4.0.1.1 | 4.0.1 | 3.1.1 | 4.0.1.2 | 3.1.1.1 |
 
-The platform packages are pinned **exactly** (`[4.0.1.1]` / `[3.1.1.1]`), not floored: the façade
+The platform packages are pinned **exactly** (`[4.0.1.2]` / `[3.1.1.1]`), not floored: the façade
 calls each binding's hand-written convenience layer — the `Action` overloads of
 `Configure`/`RequestSdk` on Android, the `Func`-typed `Identity.Edit` trampoline on iOS — and
 those carry no compatibility promise across binding revisions. A newer binding is consumed by
@@ -137,7 +137,7 @@ Nine target frameworks: `net8.0`, `net9.0`, `net10.0`, each with its `-android` 
 relies on the OS Swift runtime, ABI-stable from 12.2), **Android API 26** (the sfmcsdk `.aar`
 manifest's own floor).
 
-The platform heads pull `SFMCSDK.Net.Android 3.1.1.1` / `SFMCSDK.Net.iOS 4.0.1.1` transitively;
+The platform heads pull `SFMCSDK.Net.Android 3.1.1.1` / `SFMCSDK.Net.iOS 4.0.1.2` transitively;
 apps reference only this package unless they want the raw namespaces pinned explicitly (they may
 — the same versions arrive either way).
 

@@ -50,7 +50,7 @@
       them literal.
     -->
     <SfmcAndroidPackageVersion>3.1.1.1</SfmcAndroidPackageVersion>
-    <SfmcIosPackageVersion>4.0.1.1</SfmcIosPackageVersion>
+    <SfmcIosPackageVersion>4.0.1.2</SfmcIosPackageVersion>
   </PropertyGroup>
 
   <!--
