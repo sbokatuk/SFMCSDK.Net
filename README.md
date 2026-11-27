@@ -320,6 +320,13 @@ the device tests do this. Releases before 5.0.0.1 did not wait for the completio
 reported success after a fixed two seconds — so on such a simulator build they claimed an
 initialization that never happened.
 
+**`javac error JAVAC0000: class file has wrong version 61.0, should be 55.0` in a
+`net8.0-android34.0` app.** The sfmcsdk `.aar` is Java 17 bytecode and the build compiled against
+it with JDK 11, which .NET 8 for Android still accepts (the net9 and net10 workloads refuse
+anything older than 17). Build with JDK 17: pass `-p:JavaSdkDirectory=<path to JDK 17>` or set
+that property in the project. `JAVA_HOME` alone is not a guarantee: the build skips it when it
+names a JDK newer than the workload supports and falls back to another installed one.
+
 **Restore fails with NU1301 naming `artifacts`.** The local package source must exist:
 `mkdir -p artifacts` (a fresh clone has it via the committed `.gitkeep`).
 
