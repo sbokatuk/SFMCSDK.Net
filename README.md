@@ -3,8 +3,8 @@
 [![NuGet](https://img.shields.io/nuget/v/SFMCSDK.Net?label=nuget)](https://www.nuget.org/packages/SFMCSDK.Net)
 [![release](https://github.com/sbokatuk/SFMCSDK.Net/actions/workflows/release.yml/badge.svg)](https://github.com/sbokatuk/SFMCSDK.Net/actions/workflows/release.yml)
 [![Targets: net8.0 | net9.0 | net10.0](https://img.shields.io/badge/targets-net8.0%20%7C%20net9.0%20%7C%20net10.0-512BD4)](#installing)
-[![SFMCSDK 4.0.1](https://img.shields.io/badge/SFMCSDK-4.0.1-099DFD)](https://github.com/salesforce-marketingcloud/sfmc-sdk-ios/releases)
-[![sfmcsdk 3.1.1](https://img.shields.io/badge/sfmcsdk-3.1.1-099DFD)](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/)
+[![SFMCSDK 5.0.0](https://img.shields.io/badge/SFMCSDK-5.0.0-099DFD)](https://github.com/salesforce-marketingcloud/sfmc-sdk-ios/releases)
+[![sfmcsdk 3.3.0](https://img.shields.io/badge/sfmcsdk-3.3.0-099DFD)](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-orange)](#licence)
 
 **One Salesforce Marketing Cloud SFMC SDK API for .NET.** Awaitable initialization, identity
@@ -123,8 +123,8 @@ builder.Services.AddSingleton<ISfmcSdkClient>(
 
 ## Packages and versions
 
-One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.1.2` is SFMCSDK
-**4.0.1**, revision **2**, and the Android side of the same release is sfmcsdk **3.1.1**.
+One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `5.0.0.1` is SFMCSDK
+**5.0.0**, revision **1**, and the Android side of the same release is sfmcsdk **3.3.0**.
 
 > **Why one version names one SDK.** Salesforce releases the iOS and Android SDKs on separate
 > cadences and their version numbers have never matched. A façade over both has to pick one line
@@ -134,9 +134,16 @@ One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.
 
 | SFMCSDK.Net | SFMCSDK (iOS, native) | sfmcsdk (Android, native) | SFMCSDK.Net.iOS | SFMCSDK.Net.Android |
 | --- | --- | --- | --- | --- |
+| 5.0.0.1 | 5.0.0 | 3.3.0 | 5.0.0.1 | 3.3.0.1 |
 | 4.0.1.2 | 4.0.1 | 3.1.1 | 4.0.1.2 | 3.1.1.1 |
 
-The platform packages are pinned **exactly** (`[4.0.1.2]` / `[3.1.1.1]`), not floored: the façade
+The two rows are two generations of the native SDKs, and each pairs with one MobilePush
+generation: SFMCSDK 5 / sfmcsdk 3.3 with MobilePush 12, SFMCSDK 4.0 / sfmcsdk 3.1 with
+MobilePush 11. The iOS core enforces this itself (`SFMCSdk.State` on 5.0.0 accepts the
+MobilePush module only in the 12.x range). An app that also uses the MobilePush bindings
+directly stays on 4.0.1.2 until it moves to their 12.x packages.
+
+The platform packages are pinned **exactly** (`[5.0.0.1]` / `[3.3.0.1]`), not floored: the façade
 calls each binding's hand-written convenience layer — the `Action` overloads of
 `Configure`/`RequestSdk` on Android, the `Func`-typed `Identity.Edit` trampoline on iOS — and
 those carry no compatibility promise across binding revisions. A newer binding is consumed by
@@ -146,7 +153,7 @@ floating a consumer onto it.
 ## Installing
 
 ```xml
-<PackageReference Include="SFMCSDK.Net" Version="4.0.1.2" />
+<PackageReference Include="SFMCSDK.Net" Version="5.0.0.1" />
 ```
 
 Nine target frameworks: `net8.0`, `net9.0`, `net10.0`, each with its `-android` and `-ios` head —
@@ -155,7 +162,7 @@ Nine target frameworks: `net8.0`, `net9.0`, `net10.0`, each with its `-android` 
 relies on the OS Swift runtime, ABI-stable from 12.2), **Android API 26** (the sfmcsdk `.aar`
 manifest's own floor).
 
-The platform heads pull `SFMCSDK.Net.Android 3.1.1.1` / `SFMCSDK.Net.iOS 4.0.1.2` transitively;
+The platform heads pull `SFMCSDK.Net.Android 3.3.0.1` / `SFMCSDK.Net.iOS 5.0.0.1` transitively;
 apps reference only this package unless they want the raw namespaces pinned explicitly (they may
 — the same versions arrive either way).
 
@@ -226,7 +233,7 @@ the sibling repositories) and the locally packed façade both resolve without pu
 
 ```sh
 cp ../SFMCSDK.Net.Android/artifacts/*.nupkg ../SFMCSDK.Net.iOS/artifacts/*.nupkg artifacts/  # or let nuget.org serve them
-./build/BuildNugets.sh                # packs 4.0.1.2 into ./artifacts
+./build/BuildNugets.sh                # packs 5.0.0.1 into ./artifacts
 dotnet test tests/SFMCSDK.Net.UnitTests -p:SfmcNeutralOnly=true
 dotnet test tests/SFMCSDK.Net.PackageTests
 ```
@@ -238,8 +245,8 @@ Three suites, cheapest first — each catches what the previous one cannot see:
 ```sh
 dotnet test tests/SFMCSDK.Net.UnitTests -p:SfmcNeutralOnly=true   # validation, guard, neutral contract
 dotnet test tests/SFMCSDK.Net.PackageTests                        # nine TFMs, exact pins, licence, symbols
-./.github/scripts/run-simulator-tests.sh 4.0.1.2 net9.0-ios18.0   # the façade over the real SDK
-./.github/scripts/run-emulator-tests.sh 4.0.1.2 net9.0-android35.0
+./.github/scripts/run-simulator-tests.sh 5.0.0.1 net9.0-ios18.0   # the façade over the real SDK
+./.github/scripts/run-emulator-tests.sh 5.0.0.1 net9.0-android35.0
 ```
 
 `-p:SfmcNeutralOnly=true` collapses the referenced façade to its neutral target frameworks, so
