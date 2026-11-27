@@ -48,7 +48,8 @@ public sealed class AppDelegate : UIApplicationDelegate
         // the main thread through UIKit's synchronisation context.
         _ = TestRunner.RunAndReportAsync(
             Console.WriteLine,
-            exitCode => Environment.Exit(exitCode));
+            exitCode => Environment.Exit(exitCode),
+            KeychainCheck.Test);
 
         return true;
     }

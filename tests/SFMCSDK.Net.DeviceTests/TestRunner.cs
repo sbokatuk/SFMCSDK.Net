@@ -22,13 +22,19 @@ public static class TestRunner
     /// <c>simctl launch --console-pty</c> returns instead of hanging; Android does nothing,
     /// because the runner reads the verdict from logcat and killing the app would race the flush.
     /// </param>
-    public static async Task RunAndReportAsync(Action<string> report, Action<int> exit)
+    /// <param name="platformChecks">
+    /// Checks only one head can express, run before the shared ones: preconditions of the
+    /// platform rather than properties of the façade, whose failure would otherwise surface later
+    /// as a baffling shared failure.
+    /// </param>
+    public static async Task RunAndReportAsync(
+        Action<string> report, Action<int> exit, params SmokeTest[] platformChecks)
     {
         SmokeTests.Reporter = message => report($"    {message}");
 
         var failures = 0;
 
-        foreach (var test in SmokeTests.All)
+        foreach (var test in platformChecks.Concat(SmokeTests.All))
         {
             try
             {

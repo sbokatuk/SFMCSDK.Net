@@ -32,6 +32,23 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
+  <!--
+    Keychain access on the simulator. The SFMC SDK keeps its keys in the keychain and does not
+    initialize without it: no completion block, so InitializeAsync times out. A simulator app with
+    no entitlements is refused the keychain (errSecMissingEntitlement, -34018). The .NET 10
+    workload this sample builds with happens to embed simulated entitlements by itself, but the
+    .NET 8 and .NET 9 workloads do not, and an app copied from this one should not depend on
+    which; so the entitlement is stated. CodesignRequireProvisioningProfile is off because asking
+    for entitlements otherwise sends the .NET 8/9 workloads looking for a provisioning profile.
+
+    Device builds are untouched: they are signed with a profile, which carries the application
+    identifier the keychain needs.
+  -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And ('$(RuntimeIdentifier)' == '' Or $(RuntimeIdentifier.StartsWith('iossimulator')))">
+    <CodesignEntitlements>Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
+    <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- App Icon -->
     <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />

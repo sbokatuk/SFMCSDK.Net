@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SFMCSDK.Net;
 
 namespace SFMCSDK.Net.DeviceTests;
@@ -30,16 +31,30 @@ public static class SmokeTests
     [
         new("initialize_completes", async () =>
         {
+            if (Client.IsInitialized)
+            {
+                throw new InvalidOperationException("IsInitialized was true before InitializeAsync ran.");
+            }
+
             // Debug logging on, so a native failure under investigation is already captured in
             // the platform log the runner uploads. The timeout is generous for emulator cold
             // starts; the façade's own default would very likely do.
+            var clock = Stopwatch.StartNew();
             await Client.InitializeAsync(new SfmcSdkOptions
             {
                 LogLevel = SfmcLogLevel.Debug,
                 InitializationTimeout = TimeSpan.FromSeconds(60),
             });
 
-            Reporter("InitializeAsync completed");
+            // The elapsed time is the evidence that the native completion was awaited on both
+            // platforms: it arrives in milliseconds. The iOS leg used to sleep a fixed two
+            // seconds instead, which this line would show.
+            Reporter($"InitializeAsync completed after {clock.ElapsedMilliseconds} ms");
+
+            if (!Client.IsInitialized)
+            {
+                throw new InvalidOperationException("InitializeAsync completed but IsInitialized is false.");
+            }
         }),
 
         new("diagnostic_state_reports", () =>
