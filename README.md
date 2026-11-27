@@ -71,10 +71,12 @@ factory returns null and the event silently vanishes; iOS's initializer returns 
 initialization callback that never arrives **times out** with an exception naming the operation
 instead of hanging the app's startup await forever.
 
-And one edge is upstream behaviour this repository had to measure to hide: with zero modules
-configured, iOS's `initializeSdk` completion **never fires** — it reports per-module statuses,
-and there are none. `InitializeAsync` knows that (see `Platforms/Apple`), so the same `await`
-completes on both platforms.
+On iOS, `InitializeAsync` awaits `initializeSdk`'s completion block. It reports one status per
+configured module, and the façade configures none, so it fires with an empty array — a few
+milliseconds after the call, measured on SFMCSDK 4.0.1 and 5.0.0. What it does need is the
+keychain: the SDK keeps its keys there and, refused it, neither initializes nor reports, so the
+`await` times out instead. A device build signed with a provisioning profile always has keychain
+access; a simulator build needs an entitlement — see [Troubleshooting](#troubleshooting).
 
 ## What the façade does and does not hide
 
@@ -258,7 +260,9 @@ The device checks run without credentials on purpose: the empty module config po
 tenant, so server calls fail by design. What they prove is the packaging promise — the packed
 package's dependency groups pull the right binding in on each platform, and the façade drives it:
 `InitializeAsync` completes, identity and tracking cross into native code, the one-shot guard
-holds, and `DiagnosticState` answers.
+holds, and `DiagnosticState` answers. The iOS head carries a simulator-only keychain entitlement
+(see [Troubleshooting](#troubleshooting)) and checks the keychain before anything else, so a lost
+entitlement fails as one line naming the cause rather than as an initialization timeout.
 
 ## Upgrading
 
@@ -294,6 +298,27 @@ guard the calls, or inject a fake of `ISfmcSdkClient`; the real implementation r
 
 **`InvalidOperationException` from a second `InitializeAsync`.** Initialization is one-shot per
 client and per process — see [Usage notes](#usage-notes). Await the first call; do not retry.
+
+**`InitializeAsync` times out on the iOS simulator.** The app has no keychain access. The SDK
+keeps its keys in the keychain and, refused it, does not initialize and reports nothing, so the
+completion `InitializeAsync` waits for never comes. On a simulator an app without entitlements is
+refused (`SecItemAdd` returns `errSecMissingEntitlement`, -34018), and the .NET 8 and .NET 9 iOS
+workloads build simulator apps exactly that way; the .NET 10 workload embeds simulated
+entitlements by itself. Give the simulator build one entitlement, applied to simulator runtime
+identifiers only so that device builds keep their provisioning profile's:
+
+```xml
+<!-- Platforms/iOS/Entitlements.Simulator.plist: a keychain-access-groups array holding your bundle id -->
+<PropertyGroup Condition=" $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And ('$(RuntimeIdentifier)' == '' Or $(RuntimeIdentifier.StartsWith('iossimulator'))) ">
+  <CodesignEntitlements>Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
+  <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
+</PropertyGroup>
+```
+
+The [sample](https://github.com/sbokatuk/SFMCSDK.Net/tree/main/samples/SFMCSDK.Net.Sample) and
+the device tests do this. Releases before 5.0.0.1 did not wait for the completion at all — they
+reported success after a fixed two seconds — so on such a simulator build they claimed an
+initialization that never happened.
 
 **Restore fails with NU1301 naming `artifacts`.** The local package source must exist:
 `mkdir -p artifacts` (a fresh clone has it via the committed `.gitkeep`).

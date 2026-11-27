@@ -16,11 +16,13 @@ public sealed record SfmcSdkOptions
     /// before failing with <see cref="TimeoutException"/>. Default: 30 seconds.
     /// </summary>
     /// <remarks>
-    /// Only the Android path can actually spend this: <c>SFMCSdk.configure</c> reports through a
-    /// callback, and a callback that never comes — a broken binding, a deadlocked initializer —
-    /// would otherwise hang the app's startup await forever. On iOS the zero-module completion
-    /// never fires by (verified) design and initialization completes after a short settle, so the
-    /// timeout has nothing to bound there. Must be positive.
+    /// Both platforms report initialization through a callback — <c>SFMCSdk.configure</c>'s on
+    /// Android, <c>initializeSdk</c>'s completion block on iOS — and a callback that never comes
+    /// would otherwise hang the app's startup await forever. Normally they arrive within
+    /// milliseconds. On iOS the one known way to miss it is an app the keychain refuses: the SDK
+    /// keeps its keys there and, without it, neither initializes nor reports. A simulator build
+    /// with no entitlements is refused (<c>errSecMissingEntitlement</c>, -34018); a device build
+    /// signed with a provisioning profile is not. Must be positive.
     /// </remarks>
     public TimeSpan InitializationTimeout { get; init; } = TimeSpan.FromSeconds(30);
 

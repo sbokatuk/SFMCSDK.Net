@@ -31,8 +31,8 @@ public interface ISfmcSdkClient
 {
     /// <summary>
     /// Initializes the SDK core with an empty module configuration, completing when the SDK has
-    /// reported — Android's terminal initialization callback, or iOS's post-initialize settle
-    /// (the zero-module completion never fires there; see <see cref="SfmcSdkClient"/>).
+    /// reported — Android's terminal initialization callback, or iOS's <c>initializeSdk</c>
+    /// completion block (which fires with no module statuses, since none is configured).
     /// </summary>
     /// <param name="options">Timeout and log level; null takes every default.</param>
     /// <param name="cancellationToken">
@@ -47,8 +47,8 @@ public interface ISfmcSdkClient
     /// <see cref="SfmcSdkOptions.InitializationTimeout"/> is zero or negative.
     /// </exception>
     /// <exception cref="TimeoutException">
-    /// The native SDK reported nothing within <see cref="SfmcSdkOptions.InitializationTimeout"/>
-    /// (Android only — see that property).
+    /// The native SDK reported nothing within <see cref="SfmcSdkOptions.InitializationTimeout"/>.
+    /// On iOS the usual cause is a missing keychain entitlement — see that property.
     /// </exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> fired.</exception>
     /// <exception cref="PlatformNotSupportedException">Neutral target framework.</exception>
