@@ -47,4 +47,27 @@ public class SfmcSdkOptionsTests
         // options reaches the platform seam (which on this neutral head reports itself).
         await Assert.ThrowsAsync<PlatformNotSupportedException>(() => client.InitializeAsync());
     }
+
+    [Fact]
+    public async Task A_timeout_too_long_for_a_timer_is_refused_before_the_initialization_is_consumed()
+    {
+        // TimeSpan.MaxValue is the natural way to write "no timeout", and CancellationTokenSource
+        // throws on anything above int.MaxValue milliseconds. Both platforms wait through that
+        // timer, so the façade has to refuse the value up front, before the one-shot claim.
+        var client = new SfmcSdkClient();
+        var options = new SfmcSdkOptions { InitializationTimeout = TimeSpan.MaxValue };
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => client.InitializeAsync(options));
+        await Assert.ThrowsAsync<PlatformNotSupportedException>(() => client.InitializeAsync());
+    }
+
+    [Fact]
+    public async Task The_longest_timer_timeout_is_accepted()
+    {
+        var client = new SfmcSdkClient();
+        var options = new SfmcSdkOptions { InitializationTimeout = TimeSpan.FromMilliseconds(int.MaxValue) };
+
+        // Accepted by validation, so the call reaches the neutral platform seam.
+        await Assert.ThrowsAsync<PlatformNotSupportedException>(() => client.InitializeAsync(options));
+    }
 }

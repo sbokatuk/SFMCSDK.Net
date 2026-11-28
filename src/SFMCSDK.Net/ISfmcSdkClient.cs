@@ -44,7 +44,8 @@ public interface ISfmcSdkClient
     /// <see cref="SfmcSdkClient.InitializeAsync"/> for why the guard does not reset.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <see cref="SfmcSdkOptions.InitializationTimeout"/> is zero or negative.
+    /// <see cref="SfmcSdkOptions.InitializationTimeout"/> is zero, negative, or longer than
+    /// <see cref="int.MaxValue"/> milliseconds.
     /// </exception>
     /// <exception cref="TimeoutException">
     /// The native SDK reported nothing within <see cref="SfmcSdkOptions.InitializationTimeout"/>.

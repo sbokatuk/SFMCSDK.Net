@@ -24,6 +24,9 @@ namespace SFMCSDK.Net;
 /// </remarks>
 public sealed partial class SfmcSdkClient : ISfmcSdkClient
 {
+    /// <summary>The longest wait a <see cref="CancellationTokenSource"/> timer accepts.</summary>
+    private static readonly TimeSpan MaxInitializationTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
+
     /// <summary>0 until <see cref="InitializeAsync"/> claims it; the claim is never returned.</summary>
     private int _initializationClaimed;
 
@@ -63,6 +66,18 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
                 nameof(options),
                 options.InitializationTimeout,
                 "SfmcSdkOptions.InitializationTimeout must be positive.");
+        }
+
+        // The wait is a CancellationTokenSource timer, which refuses anything longer than
+        // int.MaxValue milliseconds. Checked here so that such a value fails before the claim
+        // below, rather than inside the platform call with the one-shot slot already spent.
+        if (options.InitializationTimeout > MaxInitializationTimeout)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                options.InitializationTimeout,
+                $"SfmcSdkOptions.InitializationTimeout must be at most {MaxInitializationTimeout} " +
+                "(int.MaxValue milliseconds).");
         }
 
         // Validation above, claim below: a call refused for a bad argument has not consumed the

@@ -22,7 +22,8 @@ public sealed record SfmcSdkOptions
     /// milliseconds. On iOS the one known way to miss it is an app the keychain refuses: the SDK
     /// keeps its keys there and, without it, neither initializes nor reports. A simulator build
     /// with no entitlements is refused (<c>errSecMissingEntitlement</c>, -34018); a device build
-    /// signed with a provisioning profile is not. Must be positive.
+    /// signed with a provisioning profile is not. Must be positive and at most
+    /// <see cref="int.MaxValue"/> milliseconds (about 24.8 days).
     /// </remarks>
     public TimeSpan InitializationTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
