@@ -28,7 +28,7 @@ public partial class MainPage : ContentPage
             // buttons.
             await _sdk.InitializeAsync(new SfmcSdkOptions { LogLevel = SfmcLogLevel.Debug });
 
-            StatusLabel.Text = $"Initialized. {_sdk.DiagnosticState}";
+            SetStatus($"Initialized. {_sdk.DiagnosticState}");
             AppendLog("InitializeAsync completed.");
             ProfileIdEntry.IsEnabled = true;
             ProfileIdButton.IsEnabled = true;
@@ -39,7 +39,7 @@ public partial class MainPage : ContentPage
             // InvalidOperationException here means the one-shot guard: initialization already
             // ran (or is running) on this client. The button stays disabled either way - a
             // second attempt is exactly what the guard exists to refuse.
-            StatusLabel.Text = "Initialization failed.";
+            SetStatus("Initialization failed.");
             AppendLog($"{exception.GetType().Name}: {exception.Message}");
         }
     }
@@ -78,6 +78,19 @@ public partial class MainPage : ContentPage
         }
     }
 
+    private void SetStatus(string status)
+    {
+        Console.WriteLine($"SFMCSDK.Net.Sample: status: {status}");
+        StatusLabel.Text = status;
+    }
+
+    /// <remarks>
+    /// Also written to stdout, which lands in logcat on Android and on the console of
+    /// <c>simctl launch --console</c> on iOS, so a run can be checked without reading the screen.
+    /// </remarks>
     private void AppendLog(string line)
-        => LogLabel.Text = $"{DateTime.Now:HH:mm:ss}  {line}\n{LogLabel.Text}";
+    {
+        Console.WriteLine($"SFMCSDK.Net.Sample: {line}");
+        LogLabel.Text = $"{DateTime.Now:HH:mm:ss}  {line}\n{LogLabel.Text}";
+    }
 }

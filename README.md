@@ -3,8 +3,8 @@
 [![NuGet](https://img.shields.io/nuget/v/SFMCSDK.Net?label=nuget)](https://www.nuget.org/packages/SFMCSDK.Net)
 [![release](https://github.com/sbokatuk/SFMCSDK.Net/actions/workflows/release.yml/badge.svg)](https://github.com/sbokatuk/SFMCSDK.Net/actions/workflows/release.yml)
 [![Targets: net8.0 | net9.0 | net10.0](https://img.shields.io/badge/targets-net8.0%20%7C%20net9.0%20%7C%20net10.0-512BD4)](#installing)
-[![SFMCSDK 4.0.1](https://img.shields.io/badge/SFMCSDK-4.0.1-099DFD)](https://github.com/salesforce-marketingcloud/sfmc-sdk-ios/releases)
-[![sfmcsdk 3.1.1](https://img.shields.io/badge/sfmcsdk-3.1.1-099DFD)](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/)
+[![SFMCSDK 5.0.0](https://img.shields.io/badge/SFMCSDK-5.0.0-099DFD)](https://github.com/salesforce-marketingcloud/sfmc-sdk-ios/releases)
+[![sfmcsdk 3.3.0](https://img.shields.io/badge/sfmcsdk-3.3.0-099DFD)](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-orange)](#licence)
 
 **One Salesforce Marketing Cloud SFMC SDK API for .NET.** Awaitable initialization, identity
@@ -71,10 +71,12 @@ factory returns null and the event silently vanishes; iOS's initializer returns 
 initialization callback that never arrives **times out** with an exception naming the operation
 instead of hanging the app's startup await forever.
 
-And one edge is upstream behaviour this repository had to measure to hide: with zero modules
-configured, iOS's `initializeSdk` completion **never fires** — it reports per-module statuses,
-and there are none. `InitializeAsync` knows that (see `Platforms/Apple`), so the same `await`
-completes on both platforms.
+On iOS, `InitializeAsync` awaits `initializeSdk`'s completion block. It reports one status per
+configured module, and the façade configures none, so it fires with an empty array — a few
+milliseconds after the call, measured on SFMCSDK 4.0.1 and 5.0.0. What it does need is the
+keychain: the SDK keeps its keys there and, refused it, neither initializes nor reports, so the
+`await` times out instead. A device build signed with a provisioning profile always has keychain
+access; a simulator build needs an entitlement — see [Troubleshooting](#troubleshooting).
 
 ## What the façade does and does not hide
 
@@ -123,8 +125,8 @@ builder.Services.AddSingleton<ISfmcSdkClient>(
 
 ## Packages and versions
 
-One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.1.2` is SFMCSDK
-**4.0.1**, revision **2**, and the Android side of the same release is sfmcsdk **3.1.1**.
+One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `5.0.0.1` is SFMCSDK
+**5.0.0**, revision **1**, and the Android side of the same release is sfmcsdk **3.3.0**.
 
 > **Why one version names one SDK.** Salesforce releases the iOS and Android SDKs on separate
 > cadences and their version numbers have never matched. A façade over both has to pick one line
@@ -134,9 +136,16 @@ One package. The version is `<SFMCSDK iOS version>.<binding revision>` — `4.0.
 
 | SFMCSDK.Net | SFMCSDK (iOS, native) | sfmcsdk (Android, native) | SFMCSDK.Net.iOS | SFMCSDK.Net.Android |
 | --- | --- | --- | --- | --- |
+| 5.0.0.1 | 5.0.0 | 3.3.0 | 5.0.0.1 | 3.3.0.1 |
 | 4.0.1.2 | 4.0.1 | 3.1.1 | 4.0.1.2 | 3.1.1.1 |
 
-The platform packages are pinned **exactly** (`[4.0.1.2]` / `[3.1.1.1]`), not floored: the façade
+The two rows are two generations of the native SDKs, and each pairs with one MobilePush
+generation: SFMCSDK 5 / sfmcsdk 3.3 with MobilePush 12, SFMCSDK 4.0 / sfmcsdk 3.1 with
+MobilePush 11. The iOS core enforces this itself (`SFMCSdk.State` on 5.0.0 accepts the
+MobilePush module only in the 12.x range). An app that also uses the MobilePush bindings
+directly stays on 4.0.1.2 until it moves to their 12.x packages.
+
+The platform packages are pinned **exactly** (`[5.0.0.1]` / `[3.3.0.1]`), not floored: the façade
 calls each binding's hand-written convenience layer — the `Action` overloads of
 `Configure`/`RequestSdk` on Android, the `Func`-typed `Identity.Edit` trampoline on iOS — and
 those carry no compatibility promise across binding revisions. A newer binding is consumed by
@@ -146,7 +155,7 @@ floating a consumer onto it.
 ## Installing
 
 ```xml
-<PackageReference Include="SFMCSDK.Net" Version="4.0.1.2" />
+<PackageReference Include="SFMCSDK.Net" Version="5.0.0.1" />
 ```
 
 Nine target frameworks: `net8.0`, `net9.0`, `net10.0`, each with its `-android` and `-ios` head —
@@ -155,7 +164,7 @@ Nine target frameworks: `net8.0`, `net9.0`, `net10.0`, each with its `-android` 
 relies on the OS Swift runtime, ABI-stable from 12.2), **Android API 26** (the sfmcsdk `.aar`
 manifest's own floor).
 
-The platform heads pull `SFMCSDK.Net.Android 3.1.1.1` / `SFMCSDK.Net.iOS 4.0.1.2` transitively;
+The platform heads pull `SFMCSDK.Net.Android 3.3.0.1` / `SFMCSDK.Net.iOS 5.0.0.1` transitively;
 apps reference only this package unless they want the raw namespaces pinned explicitly (they may
 — the same versions arrive either way).
 
@@ -226,7 +235,7 @@ the sibling repositories) and the locally packed façade both resolve without pu
 
 ```sh
 cp ../SFMCSDK.Net.Android/artifacts/*.nupkg ../SFMCSDK.Net.iOS/artifacts/*.nupkg artifacts/  # or let nuget.org serve them
-./build/BuildNugets.sh                # packs 4.0.1.2 into ./artifacts
+./build/BuildNugets.sh                # packs 5.0.0.1 into ./artifacts
 dotnet test tests/SFMCSDK.Net.UnitTests -p:SfmcNeutralOnly=true
 dotnet test tests/SFMCSDK.Net.PackageTests
 ```
@@ -238,8 +247,8 @@ Three suites, cheapest first — each catches what the previous one cannot see:
 ```sh
 dotnet test tests/SFMCSDK.Net.UnitTests -p:SfmcNeutralOnly=true   # validation, guard, neutral contract
 dotnet test tests/SFMCSDK.Net.PackageTests                        # nine TFMs, exact pins, licence, symbols
-./.github/scripts/run-simulator-tests.sh 4.0.1.2 net9.0-ios18.0   # the façade over the real SDK
-./.github/scripts/run-emulator-tests.sh 4.0.1.2 net9.0-android35.0
+./.github/scripts/run-simulator-tests.sh 5.0.0.1 net9.0-ios18.0   # the façade over the real SDK
+./.github/scripts/run-emulator-tests.sh 5.0.0.1 net9.0-android35.0
 ```
 
 `-p:SfmcNeutralOnly=true` collapses the referenced façade to its neutral target frameworks, so
@@ -251,7 +260,10 @@ The device checks run without credentials on purpose: the empty module config po
 tenant, so server calls fail by design. What they prove is the packaging promise — the packed
 package's dependency groups pull the right binding in on each platform, and the façade drives it:
 `InitializeAsync` completes, identity and tracking cross into native code, the one-shot guard
-holds, and `DiagnosticState` answers.
+holds, and `DiagnosticState` answers. The iOS head carries a simulator-only keychain entitlement
+(see [Troubleshooting](#troubleshooting)) and checks the keychain before anything else, so a lost
+entitlement is reported first as one line naming the cause, ahead of the initialization timeout it
+then leads to.
 
 ## Upgrading
 
@@ -287,6 +299,46 @@ guard the calls, or inject a fake of `ISfmcSdkClient`; the real implementation r
 
 **`InvalidOperationException` from a second `InitializeAsync`.** Initialization is one-shot per
 client and per process — see [Usage notes](#usage-notes). Await the first call; do not retry.
+
+**`InitializeAsync` times out on the iOS simulator.** The app has no keychain access. The SDK
+keeps its keys in the keychain and, refused it, does not initialize and reports nothing, so the
+completion `InitializeAsync` waits for never comes. On a simulator an app without entitlements is
+refused (`SecItemAdd` returns `errSecMissingEntitlement`, -34018), and the .NET 8 and .NET 9 iOS
+workloads build simulator apps exactly that way; the .NET 10 workload embeds simulated
+entitlements by itself. Give simulator builds one entitlement, a `keychain-access-groups` array
+holding your bundle identifier, in a file of its own such as
+`Platforms/iOS/Entitlements.Simulator.plist`, and point the build at it for simulator runtime
+identifiers only:
+
+```xml
+<Target Name="UseSimulatorKeychainEntitlement" BeforeTargets="BuildOnlySettings"
+        Condition="$(RuntimeIdentifier.StartsWith('iossimulator'))">
+  <PropertyGroup>
+    <CodesignEntitlements>$(MSBuildProjectDirectory)/Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
+    <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
+  </PropertyGroup>
+</Target>
+```
+
+A target, not a `PropertyGroup` with the same condition: the iOS SDK chooses the default runtime
+identifier (a simulator for `dotnet build`, `ios-arm64` for `dotnet publish`) after the project's
+properties are evaluated, so a property condition cannot tell a simulator build from a device
+publish without `-r`, and would give the device build the simulator's entitlements. Device builds
+keep their own: the provisioning profile carries what the keychain needs. If the app already has a
+`Platforms/iOS/Entitlements.plist`, the simulator file replaces it on simulator builds, so copy its
+entries into the simulator file as well.
+
+The [sample](https://github.com/sbokatuk/SFMCSDK.Net/tree/main/samples/SFMCSDK.Net.Sample) and
+the device tests do this. Releases before 5.0.0.1 did not wait for the completion at all — they
+reported success after a fixed two seconds — so on such a simulator build they claimed an
+initialization that never happened.
+
+**`javac error JAVAC0000: class file has wrong version 61.0, should be 55.0` in a
+`net8.0-android34.0` app.** The sfmcsdk `.aar` is Java 17 bytecode and the build compiled against
+it with JDK 11, which .NET 8 for Android still accepts (the net9 and net10 workloads refuse
+anything older than 17). Build with JDK 17: pass `-p:JavaSdkDirectory=<path to JDK 17>` or set
+that property in the project. `JAVA_HOME` alone is not a guarantee: the build skips it when it
+names a JDK newer than the workload supports and falls back to another installed one.
 
 **Restore fails with NU1301 naming `artifacts`.** The local package source must exist:
 `mkdir -p artifacts` (a fresh clone has it via the committed `.gitkeep`).

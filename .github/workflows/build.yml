@@ -201,6 +201,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The sfmcsdk .aar is Java 17 bytecode (class file version 61), so the javac that compiles
+      # the device app's Java glue against it has to be 17 or newer. Which JDK that is used to be
+      # left to the runner image, and the image decides more than it looks: .NET for Android takes
+      # $JAVA_HOME only when its version is one the workload accepts (up to 21 in all three bands)
+      # and otherwise silently takes the first other installed JDK that is. ubuntu-24.04 defaulted
+      # to 17, so every band used it. ubuntu-26.04 defaults to 25, which no band accepts; the
+      # net9 and net10 bands start at 17 and fall back to it, but the net8 band still accepts
+      # JDK 11, finds that first, and fails with
+      #
+      #     javac error JAVAC0000: class file has wrong version 61.0, should be 55.0
+      #
+      # as the same leg did in SFMCSDK.Net.Android. 17 is the oldest JDK that reads the .aar and
+      # one every band accepts. The pack job needs none: the façade is a library with no Java
+      # sources, so javac never runs there.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -298,6 +318,15 @@ jobs:
       - name: Select Xcode
         uses: ./.github/actions/select-xcode
 
+      # The Android head compiles Java against the same .aar as the device app, so it gets the
+      # same explicit JDK rather than whatever the image defaults to - the e2e-android job has the
+      # reason.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       # The sample targets the net10 band. MAUI 9 cannot build against the AndroidX generation
       # the SFMC Android binding's dependencies resolve to - the same Java-callable-wrapper
       # defect the sibling SFMCSDK.Net.Android sample documents - while MAUI 10 handles it.
@@ -381,6 +410,16 @@ jobs:
       - name: Select Xcode
         if: ${{ matrix.platform == 'ios' }}
         uses: ./.github/actions/select-xcode
+
+      # The same explicit JDK as the other Android builds - see the e2e-android job. The net10
+      # band would fall back to a JDK 17 on ubuntu-26.04 by itself, but that is the image's
+      # choice, and the Release build is the one a consumer ships.
+      - name: Set up JDK 17
+        if: ${{ matrix.platform == 'android' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       # The sample targets the net10 band — see the note on the sample job.
       - name: Set up .NET

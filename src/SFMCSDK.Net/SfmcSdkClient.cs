@@ -3,8 +3,8 @@ namespace SFMCSDK.Net;
 /// <summary>
 /// Cross-platform <see cref="ISfmcSdkClient"/>. The platform halves live in Platforms/Android and
 /// Platforms/Apple (Platforms/Neutral on the plain target frameworks); everything shared —
-/// argument validation, the one-shot initialization guard, and turning the Android SDK's callback
-/// into an awaitable call — lives here.
+/// argument validation, the one-shot initialization guard, and turning each native SDK's
+/// initialization callback into an awaitable call — lives here.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -24,6 +24,9 @@ namespace SFMCSDK.Net;
 /// </remarks>
 public sealed partial class SfmcSdkClient : ISfmcSdkClient
 {
+    /// <summary>The longest wait a <see cref="CancellationTokenSource"/> timer accepts.</summary>
+    private static readonly TimeSpan MaxInitializationTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
+
     /// <summary>0 until <see cref="InitializeAsync"/> claims it; the claim is never returned.</summary>
     private int _initializationClaimed;
 
@@ -63,6 +66,18 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
                 nameof(options),
                 options.InitializationTimeout,
                 "SfmcSdkOptions.InitializationTimeout must be positive.");
+        }
+
+        // The wait is a CancellationTokenSource timer, which refuses anything longer than
+        // int.MaxValue milliseconds. Checked here so that such a value fails before the claim
+        // below, rather than inside the platform call with the one-shot slot already spent.
+        if (options.InitializationTimeout > MaxInitializationTimeout)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                options.InitializationTimeout,
+                $"SfmcSdkOptions.InitializationTimeout must be at most {MaxInitializationTimeout} " +
+                "(int.MaxValue milliseconds).");
         }
 
         // Validation above, claim below: a call refused for a bad argument has not consumed the
@@ -153,16 +168,21 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
 
     /// <summary>
     /// Runs one native start call and awaits the completion it reports, bounded by the configured
-    /// timeout and the caller's token. Shared so the mechanics are written (and tested) once; the
-    /// Android initialization is the caller today, and the iOS one deliberately is not — its
-    /// zero-module completion never fires, so there is nothing to await (see Platforms/Apple).
+    /// timeout and the caller's token. Shared so the mechanics are written (and tested) once: both
+    /// platforms' initializations go through it — Android's <c>configure</c> callback and iOS's
+    /// <c>initializeSdk</c> completion block.
     /// </summary>
     /// <param name="start">Starts the native call; the argument is invoked once on completion.</param>
     /// <param name="operation">Human-readable name for the timeout message.</param>
     /// <param name="timeout">How long to wait before failing with <see cref="TimeoutException"/>.</param>
     /// <param name="cancellationToken">The caller's token — cancellation wins over the timeout.</param>
+    /// <param name="timeoutHint">
+    /// Appended to the timeout message: the platform's most likely reason for a completion that
+    /// never comes, so the exception names a cause rather than only a symptom.
+    /// </param>
     private static async Task AwaitNativeCompletion(
-        Action<Action> start, string operation, TimeSpan timeout, CancellationToken cancellationToken)
+        Action<Action> start, string operation, TimeSpan timeout, CancellationToken cancellationToken,
+        string? timeoutHint = null)
     {
         var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -181,10 +201,13 @@ public sealed partial class SfmcSdkClient : ISfmcSdkClient
             }
             else
             {
-                pending.TrySetException(new TimeoutException(
+                var message =
                     $"The native SFMC SDK did not report {operation} within " +
                     $"{timeout.TotalSeconds:0}s. The wait was abandoned, not the SDK - its own " +
-                    "initialization may still complete in the background."));
+                    "initialization may still complete in the background.";
+
+                pending.TrySetException(new TimeoutException(
+                    timeoutHint is null ? message : $"{message} {timeoutHint}"));
             }
         }).ConfigureAwait(false);
 

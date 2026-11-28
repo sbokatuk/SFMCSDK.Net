@@ -10,13 +10,24 @@ namespace SFMCSDK.Net;
 public sealed partial class SfmcSdkClient
 {
     /// <summary>
-    /// How long initialization waits after <c>initializeSdk</c> before reporting complete — long
-    /// enough for the state machine to come up (the sibling binding repository's device tests
-    /// settled on the same figure before reading state), short enough to stay well inside any
-    /// sane <see cref="SfmcSdkOptions.InitializationTimeout"/>.
+    /// Appended to the timeout message, because on iOS a timeout almost always has one cause and
+    /// nothing else in the process says so: the SDK keeps its keys in the keychain and, refused
+    /// it, neither initializes nor reports.
     /// </summary>
-    private static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(2);
+    private const string KeychainHint =
+        "On iOS the SDK does not initialize, and reports nothing, when it cannot use the " +
+        "keychain. On a simulator that means the app was built without entitlements: give the " +
+        "simulator build a keychain-access-groups entitlement (see the SFMCSDK.Net README, " +
+        "Troubleshooting).";
 
+    /// <remarks>
+    /// <c>initializeSdk</c>'s completion reports one status per configured module, so with the
+    /// empty configuration built here it reports none, but it does fire: once per call, a few
+    /// milliseconds after the call returns, on a background thread, with an empty array. That
+    /// was measured on sfmc-sdk-ios 5.0.0 and on 4.0.1 by the SFMCSDK.Net.iOS device tests. What
+    /// the SDK needs before it completes is the keychain; without it the completion never comes,
+    /// which is what the timeout and <see cref="KeychainHint"/> are for.
+    /// </remarks>
     private async partial Task InitializeCore(SfmcSdkOptions options, CancellationToken cancellationToken)
     {
         if (options.LogLevel is { } level)
@@ -31,16 +42,15 @@ public sealed partial class SfmcSdkClient
         // SFMCSdkConfigBuilder - the escape hatch named on ISfmcSdkClient.
         var config = new SFMCSdkConfigBuilder().Build();
 
-        // VERIFIED against sfmc-sdk-ios 4.0.1 on a simulator (and encoded in the sibling
-        // SFMCSDK.Net.iOS device tests): initializeSdk's completion block reports PER-MODULE init
-        // statuses, so with the empty config above it NEVER fires - upstream behaviour, not a
-        // bridge failure. Passing a completion and awaiting it here would therefore always time
-        // out. The call brings the SDK's state machine up regardless; "initialized" on this
-        // platform means the call crossed the bridge and the SDK was given a moment to settle,
-        // after which DiagnosticState answers.
-        SFMCSdk.InitializeSdk(config, null);
-
-        await Task.Delay(SettleDelay, cancellationToken).ConfigureAwait(false);
+        // The statuses are discarded: there is one per configured module and none is configured,
+        // so the array is always empty here. Its arrival is the signal. An earlier version of
+        // this method passed no completion and waited a fixed two seconds instead, on the belief
+        // that the zero-module completion never fires; that was a simulator build without
+        // keychain access, misread as upstream behaviour.
+        await AwaitNativeCompletion(
+            complete => SFMCSdk.InitializeSdk(config, _ => complete()),
+            "initialization", options.InitializationTimeout, cancellationToken,
+            KeychainHint).ConfigureAwait(false);
     }
 
     /// <remarks>

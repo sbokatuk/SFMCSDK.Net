@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  The one entitlement the simulator needs before it lets an app use the keychain. The value
+	  is the bundle identifier, written out rather than as $(AppIdentifierPrefix)$(CFBundleIdentifier):
+	  a CI runner has no provisioning profile to take a prefix from, and the simulator does not
+	  check one. See the comment in SFMCSDK.Net.Sample.csproj for why this file exists at all.
+	-->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>com.sbokatuk.sfmcnet.sample</string>
+	</array>
+</dict>
+</plist>

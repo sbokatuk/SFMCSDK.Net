@@ -46,6 +46,34 @@
     <UseInterpreter>true</UseInterpreter>
   </PropertyGroup>
 
+  <!--
+    Keychain access on the simulator. The SFMC SDK keeps its keys in the keychain and does not
+    initialize without it: initializeSdk returns, the completion block is never called, and
+    InitializeAsync times out. On the simulator the keychain answers errSecMissingEntitlement
+    (-34018) to an app that carries no entitlements, and the .NET 8 and .NET 9 iOS workloads build
+    simulator apps exactly that way: linker-signed, nothing embedded. The .NET 10 workload embeds
+    simulated entitlements on its own, which is why this used to differ per target framework.
+
+    So the simulator build is given one entitlement of its own, as the SFMCSDK.Net.iOS device tests
+    are. CodesignRequireProvisioningProfile is off because asking for entitlements otherwise makes
+    the .NET 8/9 workloads look for a provisioning profile, and a CI runner has none.
+
+    A target rather than a property group, so that device builds are not affected. The iOS SDK
+    picks the default runtime identifier (simulator for a build, ios-arm64 for a publish) only
+    after this file's properties are evaluated, so a property condition sees an empty
+    RuntimeIdentifier in both cases. A target condition runs after that choice. BuildOnlySettings
+    is the first step of every iOS build chain (.NET 8, 9 and 10), ahead of the signing and
+    entitlement targets that read these two properties. A device build is signed with a real
+    profile, which always carries the application identifier the keychain wants.
+  -->
+  <Target Name="UseSimulatorKeychainEntitlement" BeforeTargets="BuildOnlySettings"
+          Condition="$(RuntimeIdentifier.StartsWith('iossimulator'))">
+    <PropertyGroup>
+      <CodesignEntitlements>$(MSBuildProjectDirectory)/Entitlements.Simulator.plist</CodesignEntitlements>
+      <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
+    </PropertyGroup>
+  </Target>
+
   <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
     <!-- The SFMC SDK's own floor - the sfmcsdk .aar manifest declares 26. -->
     <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
