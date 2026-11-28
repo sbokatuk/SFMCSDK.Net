@@ -262,7 +262,8 @@ package's dependency groups pull the right binding in on each platform, and the 
 `InitializeAsync` completes, identity and tracking cross into native code, the one-shot guard
 holds, and `DiagnosticState` answers. The iOS head carries a simulator-only keychain entitlement
 (see [Troubleshooting](#troubleshooting)) and checks the keychain before anything else, so a lost
-entitlement fails as one line naming the cause rather than as an initialization timeout.
+entitlement is reported first as one line naming the cause, ahead of the initialization timeout it
+then leads to.
 
 ## Upgrading
 
