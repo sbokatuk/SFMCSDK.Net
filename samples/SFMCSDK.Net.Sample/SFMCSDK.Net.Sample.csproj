@@ -41,13 +41,21 @@
     which; so the entitlement is stated. CodesignRequireProvisioningProfile is off because asking
     for entitlements otherwise sends the .NET 8/9 workloads looking for a provisioning profile.
 
-    Device builds are untouched: they are signed with a profile, which carries the application
-    identifier the keychain needs.
+    A target rather than a property group, so that device builds are untouched. The iOS SDK picks
+    the default runtime identifier (simulator for a build, ios-arm64 for a publish) only after this
+    file's properties are evaluated, so a property condition sees an empty RuntimeIdentifier in both
+    cases and cannot tell them apart. A target condition runs after that choice. BuildOnlySettings
+    is the first step of every iOS build chain (.NET 8, 9 and 10), ahead of the signing and
+    entitlement targets that read these two properties. A device build keeps its own signing: the
+    provisioning profile carries the application identifier the keychain needs.
   -->
-  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And ('$(RuntimeIdentifier)' == '' Or $(RuntimeIdentifier.StartsWith('iossimulator')))">
-    <CodesignEntitlements>Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
-    <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
-  </PropertyGroup>
+  <Target Name="UseSimulatorKeychainEntitlement" BeforeTargets="BuildOnlySettings"
+          Condition="$(RuntimeIdentifier.StartsWith('iossimulator'))">
+    <PropertyGroup>
+      <CodesignEntitlements>$(MSBuildProjectDirectory)/Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
+      <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
+    </PropertyGroup>
+  </Target>
 
   <ItemGroup>
     <!-- App Icon -->

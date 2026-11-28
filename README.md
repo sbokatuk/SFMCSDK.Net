@@ -304,16 +304,28 @@ keeps its keys in the keychain and, refused it, does not initialize and reports 
 completion `InitializeAsync` waits for never comes. On a simulator an app without entitlements is
 refused (`SecItemAdd` returns `errSecMissingEntitlement`, -34018), and the .NET 8 and .NET 9 iOS
 workloads build simulator apps exactly that way; the .NET 10 workload embeds simulated
-entitlements by itself. Give the simulator build one entitlement, applied to simulator runtime
-identifiers only so that device builds keep their provisioning profile's:
+entitlements by itself. Give simulator builds one entitlement, a `keychain-access-groups` array
+holding your bundle identifier, in a file of its own such as
+`Platforms/iOS/Entitlements.Simulator.plist`, and point the build at it for simulator runtime
+identifiers only:
 
 ```xml
-<!-- Platforms/iOS/Entitlements.Simulator.plist: a keychain-access-groups array holding your bundle id -->
-<PropertyGroup Condition=" $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And ('$(RuntimeIdentifier)' == '' Or $(RuntimeIdentifier.StartsWith('iossimulator'))) ">
-  <CodesignEntitlements>Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
-  <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
-</PropertyGroup>
+<Target Name="UseSimulatorKeychainEntitlement" BeforeTargets="BuildOnlySettings"
+        Condition="$(RuntimeIdentifier.StartsWith('iossimulator'))">
+  <PropertyGroup>
+    <CodesignEntitlements>$(MSBuildProjectDirectory)/Platforms/iOS/Entitlements.Simulator.plist</CodesignEntitlements>
+    <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
+  </PropertyGroup>
+</Target>
 ```
+
+A target, not a `PropertyGroup` with the same condition: the iOS SDK chooses the default runtime
+identifier (a simulator for `dotnet build`, `ios-arm64` for `dotnet publish`) after the project's
+properties are evaluated, so a property condition cannot tell a simulator build from a device
+publish without `-r`, and would give the device build the simulator's entitlements. Device builds
+keep their own: the provisioning profile carries what the keychain needs. If the app already has a
+`Platforms/iOS/Entitlements.plist`, the simulator file replaces it on simulator builds, so copy its
+entries into the simulator file as well.
 
 The [sample](https://github.com/sbokatuk/SFMCSDK.Net/tree/main/samples/SFMCSDK.Net.Sample) and
 the device tests do this. Releases before 5.0.0.1 did not wait for the completion at all — they
